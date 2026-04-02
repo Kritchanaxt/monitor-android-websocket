@@ -1,12 +1,12 @@
-# Android Remote Relay Web Client
+# Android Remote Relay Web Client (Monitoring)
 
-A sleek and modern web interface for controlling and monitoring Android relay devices remotely. Built with vanilla HTML/CSS/JS for maximum performance and portability.
+A sleek and modern web interface for monitoring and controlling Android relay devices. This web client receives real-time data and status updates directly from their Android hosts, providing a centralized dashboard for device management.
 
 ## Features
-- ✨ Real-time status monitoring
-- ⚡ Fast and responsive UI
-- 📱 Mobile-friendly design
-- 🛠 Easy deployment with Vercel/GitHub Pages
+- 📊 **Real-time Monitoring**: Track Android device status and sensor data instantly.
+- ⚡ **Bi-directional Communication**: Receive data from Android and send control commands back.
+- ✨ **Sleek UI**: Modern, responsive dashboard built with vanilla web technologies.
+- 🛠 **Easy Deployment**: Optimized for Vercel and GitHub Pages.
 
 ## How to use
 1. Open [index.html](index.html) in your browser.
