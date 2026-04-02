@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Remote Relay</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --accent: #818CF8;
+            --terminal-bg: #111827;
+        }
+
+        * { box-sizing: border-box; transition: all 0.2s ease; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 24px;
+            max-width: 1280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .header h1 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+
+        .container { 
+            max-width: 1280px; 
+            margin: 0 auto; 
+            display: grid; 
+            grid-template-columns: 1fr 350px; 
+            gap: 24px; 
+        }
+        
+        @media (max-width: 1024px) { 
+            .container { grid-template-columns: 1fr; } 
+        }
+
+        .card { 
+            background: var(--card-bg); 
+            border-radius: 16px; 
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+            height: fit-content;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-main);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .status-pill::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .status-connected { background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
+        .status-connected::before { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-disconnected { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+        .status-disconnected::before { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        .status-warning { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+        .status-warning::before { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
+            gap: 12px; 
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #F3F4F6;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #E5E7EB;
+        }
+        .stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px; }
+        .stat-value { font-size: 1.25rem; font-weight: 800; color: var(--primary); display: block; }
+
+        .profile-box {
+            padding: 12px 16px;
+            background: #EEF2FF;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal {
+            background: var(--terminal-bg);
+            border-radius: 12px;
+            padding: 16px;
+            height: 500px;
+            overflow-y: auto;
+            font-family: 'Fira Code', 'Monaco', monospace;
+            font-size: 0.8rem;
+            color: #E5E7EB;
+            border: 1px solid #374151;
+        }
+        .log-line { margin-bottom: 6px; display: flex; gap: 12px; border-bottom: 1px solid #1F2937; padding-bottom: 4px; }
+        .log-ts { color: #6B7280; flex-shrink: 0; font-size: 0.75rem; }
+        .log-type { font-weight: 700; width: 40px; flex-shrink: 0; text-transform: uppercase; font-size: 0.7rem; text-align: center; border-radius: 3px; }
+        .type-tx { background: #1E3A8A; color: #60A5FA; }
+        .type-rx { background: #4C1D95; color: #A78BFA; }
+        .type-info { background: #064E3B; color: #34D399; }
+        .type-err { background: #7F1D1D; color: #F87171; }
+        .log-msg { white-space: pre-wrap; word-break: break-all; flex: 1; line-height: 1.4; }
+
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+        input, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #FFFFFF;
+            font-family: inherit;
+        }
+        textarea { font-family: 'Fira Code', monospace; resize: vertical; }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; width: 100%; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background: #F9FAFB; }
+        .btn-danger { background: var(--danger); color: white; width: 100%; }
+        .btn-danger:hover { background: #DC2626; }
+        
+        .mode-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .mode-btn { 
+            padding: 8px 4px; 
+            font-size: 0.75rem; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            background: white;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .mode-btn:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
+
+        #frameCounter { 
+            margin-top: 12px; 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            background: #F3F4F6;
+            padding: 4px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Remote Dashboard</h1>
+        <div id="statusBadge" class="status-pill status-disconnected">Disconnected</div>
+    </div>
+
+    <div class="container">
+        <main>
+            <div class="card">
+                <div class="card-title">System Metrics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">CPU Usage</span>
+                        <span id="cpuVal" class="stat-value">--%</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">RAM Used</span>
+                        <span id="ramUsedVal" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">RAM Total</span>
+                        <span id="ramTotalVal" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Battery / Temp</span>
+                        <span id="batteryVal" class="stat-value">--</span>
+                    </div>
+                </div>
+                <div class="profile-box">
+                    <span class="stat-label" style="color: var(--primary); margin: 0;">OCR Profile Status</span>
+                    <span id="ocrModeVal" style="font-weight: 800; font-size: 1rem; color: var(--primary);">Standby</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Session Log
+                    <button onclick="clearLogs()" class="btn-outline" style="padding: 4px 12px; font-size: 0.7rem;">Clear Log</button>
+                </div>
+                <div id="log" class="terminal"></div>
+            </div>
+        </main>
+
+        <aside>
+            <div class="card">
+                <div class="card-title">Link Configuration</div>
+                <div class="input-group">
+                    <label>Server Endpoint</label>
+                    <input type="text" id="urlInput" value="ws://192.168.1.XX:8887" placeholder="ws://192.168.1.XX:8887">
+                </div>
+                <div class="input-group">
+                    <label>Auth Passkey</label>
+                    <input type="password" id="passkeyInput" placeholder="6-digit key">
+                </div>
+                <button id="connectBtn" onclick="connect()" class="btn-primary">Connect Agent</button>
+                <button id="disconnectBtn" onclick="disconnect()" class="btn-danger" style="display: none;">Terminate Link</button>
+                <div id="frameCounter" style="display: none; text-align: center;">Packets: 0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Control Center</div>
+                <label>Action Presets</label>
+                <div class="mode-selector">
+                    <button onclick="setPayload('ping')" class="mode-btn">Ping</button>
+                    <button onclick="setPayload('auth')" class="mode-btn">Auth</button>
+                    <button onclick="setPayload('notification')" class="mode-btn">Notify</button>
+                </div>
+                <div class="input-group">
+                    <label>Message Payload (JSON)</label>
+                    <textarea id="payloadInput" rows="5">{"type": "ping"}</textarea>
+                </div>
+                <button onclick="sendData()" id="sendBtn" class="btn-primary" style="background: #9CA3AF;" disabled>Dispatch Signal</button>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        let ws;
+        const logDiv = document.getElementById('log');
+        const statusBadge = document.getElementById('statusBadge');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const urlInput = document.getElementById('urlInput');
+
+        let frameCount = 0;
+        const frameCounter = document.getElementById('frameCounter');
+
+        window.onload = () => {
+            urlInput.value = "ws://192.168.1.XX:8887";
+        };
+
+        function connect() {
+            const url = urlInput.value.trim();
+            if (!url) return alert("Please enter Server Endpoint");
+            frameCount = 0;
+            writeLog("INF", "Establishing network handshake...");
+            
+            try {
+                if (ws && ws.readyState !== WebSocket.CLOSED) {
+                    ws.close();
+                }
+                ws = new WebSocket(url);
+                ws.onopen = () => {
+                    writeLog("INF", "Network Sync Active. Sending Auth...");
+                    const passkey = document.getElementById('passkeyInput').value;
+                    if(passkey && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "auth", key: passkey }));
+                    }
+                };
+                ws.onmessage = (event) => {
+                    if (event.data instanceof Blob) {
+                        frameCount++;
+                        frameCounter.innerText = "Packets: " + frameCount;
+                    } else {
+                        try {
+                            const jsonData = JSON.parse(event.data);
+                            if (jsonData.type === "heartbeat") {
+                                document.getElementById('cpuVal').textContent = jsonData.cpu_usage || "0.0%";
+                                document.getElementById('ramUsedVal').textContent = (jsonData.ram_used_mb || "0") + " MB";
+                                document.getElementById('ramTotalVal').textContent = (jsonData.ram_total_mb || "0") + " MB";
+                                document.getElementById('ocrModeVal').textContent = jsonData.ocr_mode || "Standby";
+                                if (jsonData.battery_level !== undefined) {
+                                    document.getElementById('batteryVal').textContent = jsonData.battery_level + "% / " + (jsonData.battery_temp || "--") + "°C";
+                                }
+                                // Throttling: ส่ง Heartbeat ไป Google Sheets แค่ทุกๆ 5 วินาที
+                                const now = Date.now();
+                                if (now - lastHeartbeatTime >= 5000) {
+                                    writeLog("INF", "Dispatching telemetry heartbeat...");
+                                    logToSheets(event.data);
+                                    lastHeartbeatTime = now;
+                                }
+                            } else if (jsonData.type === "auth_response") {
+                                if (jsonData.status === "pending") {
+                                    writeLog("INF", "Auth Key Valid. Waiting for manual approval on Android...");
+                                    statusBadge.textContent = "Awaiting Approval";
+                                    statusBadge.className = "status-pill status-warning";
+                                } else if (jsonData.status === "ok") {
+                                    writeLog("INF", "Uplink Authorized. Ready.");
+                                    updateStatus(true);
+                                } else {
+                                    writeLog("ERR", "Auth Failed: " + (jsonData.reason || "Invalid Key"));
+                                }
+                            } else if (jsonData.type === "ocr_result") {
+                                const summary = jsonData.summary || {};
+                                writeLog("RX", "OCR Success | " + (summary.text_object_count || 0) + " items found | " + (summary.total_latency_ms || 0) + "ms");
+                                writeLog("RX", JSON.stringify(jsonData, null, 2));
+                                logToSheets(event.data); 
+                            } else {
+                                // ถ้าไม่ใช่ heartbeat ให้แสดง raw data ปกติ
+                                if (jsonData && jsonData.type !== "heartbeat") {
+                                    writeLog("RX", event.data);
+                                }
+                            }
+                        } catch (e) { 
+                            console.error("JSON Parse or Handling error:", e);
+                            if (!event.data.includes('"type":"heartbeat"')) {
+                                writeLog("RX", event.data); 
+                            }
+                        }
+                    }
+                };
+                ws.onclose = () => {
+                    updateStatus(false);
+                    writeLog("ERR", "Link severed by host agent");
+                };
+                ws.onerror = () => writeLog("ERR", "Network Exception Fault");
+            } catch (e) { writeLog("ERR", "System Fault: " + e.message); }
+        }
+
+        function logToSheets(dataString) {
+            const scriptUrl = "https://script.google.com/macros/s/AKfycbxCwzLppgTDjSRRGA_cXbSpnKxp1pPD0YvdxREqmjd8RlP3qLAl8TH0c7GnfAhkadCW/exec";
+            try {
+                fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: dataString
+                }).catch(e => console.error("Sheets Logic Error", e));
+            } catch (e) {
+                console.error("Fetch Exception", e);
+            }
+        }
+
+        function disconnect() { if (ws) ws.close(); }
+
+        function sendData() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const data = document.getElementById('payloadInput').value;
+                ws.send(data);
+                writeLog("TX", data);
+            }
+        }
+
+        function updateStatus(isConnected) {
+            statusBadge.textContent = isConnected ? "Uplink Active" : "Disconnected";
+            statusBadge.className = "status-pill " + (isConnected ? "status-connected" : "status-disconnected");
+            connectBtn.style.display = isConnected ? 'none' : 'block';
+            disconnectBtn.style.display = isConnected ? 'block' : 'none';
+            sendBtn.disabled = !isConnected;
+            sendBtn.style.background = isConnected ? "var(--primary)" : "#9CA3AF";
+            urlInput.disabled = isConnected;
+            frameCounter.style.display = isConnected ? 'block' : 'none';
+        }
+
+        function writeLog(type, msg) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-GB', { hour12: false });
+            const line = document.createElement("div");
+            line.className = "log-line";
+            const typeClass = type === "TX" ? "type-tx" : type === "RX" ? "type-rx" : type === "ERR" ? "type-err" : "type-info";
+            line.innerHTML = '<span class="log-ts">' + time + '</span><span class="log-type ' + typeClass + '">' + type + '</span><div class="log-msg">' + msg + '</div>';
+            logDiv.appendChild(line);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLogs() { logDiv.innerHTML = ''; }
+
+        function setPayload(type) {
+            const output = document.getElementById('payloadInput');
+            if (type === 'ping') output.value = '{"type": "ping"}';
+            else if (type === 'notification') output.value = '{"type": "notification", "title": "Web Alert", "message": "Signal Received"}';
+            else if (type === 'auth') output.value = JSON.stringify({ type: "auth", key: document.getElementById('passkeyInput').value || "123456" });
+        }
+
+        function setOCRMode(cores, useGpu) {
+            const data = { type: "config_ocr", cores: cores, use_gpu: useGpu };
+            document.getElementById('payloadInput').value = JSON.stringify(data, null, 4);
+        }
+    </script>
+</body>
+</html>
